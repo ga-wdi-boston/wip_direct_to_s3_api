@@ -11,3 +11,5 @@ gem 'pry-rails'
 gem 'pry-byebug'
 gem 'aws-sdk-core'
 gem 'dotenv-rails'
+
+gem 'rack-cors', require: 'rack/cors'

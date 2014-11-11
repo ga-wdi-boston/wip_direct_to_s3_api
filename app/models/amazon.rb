@@ -1,19 +1,24 @@
 class Amazon # no inheritance here bc this class does not connect to Postgres
 
-  # this method will be called in the Amazon controller
-  # it takes as an argument the filename that will be uploaded
-  def self.sign(filename)
-    # the aws-sdk-core gem gives us the Aws module
-
-    credentials = Aws::Credentials.new(ENV['S3_ACCESS_KEY'], ENV['S3_SECRET_ACCESS_KEY'])
-
-    # here we create a new aws client
-    client = Aws::S3::Client.new(region:'us-east-1', credentials: credentials)
-
-    # here we create a new presigner, which is like a ticket giver, passing in our newly created client as an argument
-    signer = Aws::S3::Presigner.new(client: client)
-    signer.presigned_url(:get_object,
-                          key: "uploads/#{SecureRandom.uuid}/#{filename}",
-                          bucket: ENV['MYBUCKET'])
+  def self.get_s3_upload_key
+    bucket = ENV['MYBUCKET']
+    access_key = ENV['S3_ACCESS_KEY']
+    secret = ENV['S3_SECRET_ACCESS_KEY']
+    key = "uploads/#{SecureRandom.uuid}"
+    expiration = 5.minutes.from_now.utc.strftime('%Y-%m-%dT%H:%M:%S.000Z')
+    max_filesize = 2.megabytes
+    acl = 'public-read'
+      sas = '201' # Tells amazon to redirect after success instead of returning xml
+      policy = Base64.encode64(
+        "{'expiration': '#{expiration}',
+        'conditions': [
+          {'bucket': '#{bucket}'},
+          {'acl': '#{acl}'},
+          ['starts-with', '$key', '#{key}'],
+          ['content-length-range', 1, #{max_filesize}]
+          ]}
+          ").gsub(/\n|\r/, '')
+      signature = Base64.encode64(OpenSSL::HMAC.digest(OpenSSL::Digest::Digest.new('sha1'), secret, policy)).gsub(/\n| |\r/, '')
+      return {access_key: access_key, key: key, policy: policy, signature: signature, sas: sas, bucket: bucket, acl: acl, expiration: expiration}
+    end
   end
-end

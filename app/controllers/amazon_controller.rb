@@ -1,7 +1,6 @@
 class AmazonController < ApplicationController
   def sign_key
-    file_name = params[:file_name]
-    response = Amazon.sign file_name
-    render json: response
+    response = Amazon.get_s3_upload_key
+    render json: response, status: 200
   end
 end
